@@ -15,7 +15,7 @@ class _RolloutDataset(torch.utils.data.Dataset): # pylint: disable=too-few-publi
     def __init__(self, root, transform, train=True): # pylint: disable=too-many-arguments
         self._transform = transform
         self._root=root
-        self._files = listdir(root)
+        self._files = self._create_file(root)
         self._files.sort()
         if train:
             self._files = self._files[:N]
@@ -33,26 +33,37 @@ class _RolloutDataset(torch.utils.data.Dataset): # pylint: disable=too-few-publi
         # if not self._cum_size:
         #     self.load_next_buffer()
         return len(self._data)
-
-    def _create_dataset(self,filelist, N=10000, M=1000):  # N is 10000 episodes, M is number of timesteps
-        #data = np.zeros((M * N, 64, 64, 3), dtype=np.uint8)
-        data=[]
+    def _create_file(self,root, N=10000, M=1000):  # N is 10000 episodes, M is number of timesteps
+        filelist = []
         idx = 0
+        first_root=os.listdir(root)
+        for i in range(len(first_root)):
+            second_root=os.listdir(os.path.join(root,first_root[i]))
+            for j in range(len(second_root)):
+                filelist.append(os.path.join(root, first_root[i],second_root[j]))
+        return filelist
+    def _create_dataset(self,filelist, N=10000, M=1000):  # N is 10000 episodes, M is number of timesteps
+        data=[]
         for i in range(N):
-            count=0
             filename = filelist[i]
-            raw_data = np.load(os.path.join(self._root, filename))['obs']
+            #print(filename)
+            raw_data = np.load(filename)['observations']
+
             l = len(raw_data)
-            true_data=[]
-            # check_data=np.sum(raw_data,dim=-1)
+            #print(l)
             for j in range(l):
+                #print(np.max(raw_data[j]),np.min(raw_data[j]),np.mean(raw_data[j]))
                 if np.max(raw_data[j])<255:
+                    data.append((raw_data[j]))
+                else:
                     data.append((raw_data[j]))
             # raw_data=np.stack(true_data)
             l=len(data)
+
             if i%100==0:
                 print("loading file", i + 1,"having length",l)
-        data=np.stack(data)
+            if len(data)>M*N:
+                data=np.stack(data)[M*N]
             # if (idx + l) > (M * N):
             #     data = data[0:]
             #     print('premature break')
@@ -133,8 +144,8 @@ class RolloutSequenceDataset(_RolloutDataset): # pylint: disable=too-few-public-
     :args transform: transformation of the observations
     :args train: if True, train data, else test
     """
-    def __init__(self, root, seq_len, transform,  train=True): # pylint: disable=too-many-arguments
-        super().__init__(root, transform, train)
+    def __init__(self, root, seq_len, transform, buffer_size=200, train=True): # pylint: disable=too-many-arguments
+        super().__init__(root, transform, buffer_size, train)
         self._seq_len = seq_len
 
     def _get_data(self, data, seq_index):

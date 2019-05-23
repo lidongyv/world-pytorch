@@ -26,7 +26,7 @@ class Decoder(nn.Module):
         x = F.relu(self.deconv1(x))
         x = F.relu(self.deconv2(x))
         x = F.relu(self.deconv3(x))
-        reconstruction = F.sigmoid(self.deconv4(x))
+        reconstruction = torch.sigmoid(self.deconv4(x))
         return reconstruction
 
 class Encoder(nn.Module): # pylint: disable=too-many-instance-attributes
@@ -60,16 +60,17 @@ class Encoder(nn.Module): # pylint: disable=too-many-instance-attributes
 
 class VAE(nn.Module):
     """ Variational Autoencoder """
-    def __init__(self, img_channels, latent_size):
+    def __init__(self, img_channels=3, latent_size=32):
         super(VAE, self).__init__()
         self.encoder = Encoder(img_channels, latent_size)
         self.decoder = Decoder(img_channels, latent_size)
 
     def forward(self, x): # pylint: disable=arguments-differ
         mu, logsigma = self.encoder(x)
-        sigma = logsigma.exp()
-        eps = torch.randn_like(sigma)
-        z = eps.mul(sigma).add_(mu)
+        sigma = torch.exp(logsigma/2.0)
+        epsilon = torch.randn_like(sigma)
+        #z = eps.mul(sigma).add_(mu)
+        z=mu+sigma*epsilon
 
         recon_x = self.decoder(z)
         return recon_x, mu, logsigma
