@@ -17,14 +17,14 @@ from utils.misc import LSIZE, RED_SIZE
 ## WARNING : THIS SHOULD BE REPLACE WITH PYTORCH 0.5
 from utils.learning import EarlyStopping
 from utils.learning import ReduceLROnPlateau
-from data.loaders import RolloutObservationDataset
+from data.loaders_series import _RolloutDataset
 
 parser = argparse.ArgumentParser(description='VAE Trainer')
-parser.add_argument('--batch-size', type=int, default=1000*8, metavar='N',
+parser.add_argument('--batch-size', type=int, default=8, metavar='N',
                     help='input batch size for training (default: 32)')
-parser.add_argument('--epochs', type=int, default=5000, metavar='N',
+parser.add_argument('--epochs', type=int, default=1, metavar='N',
                     help='number of epochs to train (default: 1000)')
-parser.add_argument('--logdir', default='log',type=str, help='Directory where results are logged')
+parser.add_argument('--logdir', default='log_pt',type=str, help='Directory where results are logged')
 parser.add_argument('--noreload', action='store_true',
                     help='Best model is not reloaded if specified')
 parser.add_argument('--nosamples', action='store_true',
@@ -44,8 +44,6 @@ device = torch.device("cuda" if cuda else "cpu")
 
 transform_train = transforms.Compose([
     transforms.ToPILImage(),
-    transforms.Resize((RED_SIZE, RED_SIZE)),
-    transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
 ])
 
@@ -54,39 +52,47 @@ transform_test = transforms.Compose([
     transforms.Resize((RED_SIZE, RED_SIZE)),
     transforms.ToTensor(),
 ])
-
-dataset_train = RolloutObservationDataset('./datasets/carracing',
-                                          transform_train, train=True)
-dataset_test = RolloutObservationDataset('./datasets/carracing',
-                                         transform_test, train=False)
-train_loader = torch.utils.data.DataLoader(
-    dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=8,drop_last=True)
-test_loader = torch.utils.data.DataLoader(
-    dataset_test, batch_size=args.batch_size, shuffle=True, num_workers=8,drop_last=True)
-
 trained=0
 #model = VAE(3, LSIZE).to(device)
 model=VAE(3, LSIZE)
 model=torch.nn.DataParallel(model,device_ids=range(8))
 model.cuda()
 
+dataset_train = _RolloutDataset('./datasets/carracing2',transform_train)
+train_loader = torch.utils.data.DataLoader(
+    dataset_train, batch_size=args.batch_size, shuffle=False, num_workers=64,drop_last=False)
+
+
+
 
 def train(epoch):
     """ One training epoch """
-    model.test()
-    train_loss = []
-    for batch_idx, data,actions in enumerate(train_loader):
+    model.eval()
+    record_mu=[]
+    record_logvar=[]
+    record_actions=[]
+    for batch_idx, [observation,actions] in enumerate(train_loader):
         with torch.no_grad():
-            data = data.cuda()
-            recon_batch, mu, logvar = model(data)
-        if batch_idx % 1 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                len(data) * batch_idx / len(train_loader)/10,
-                loss.item()))
+            print('actions',actions.shape)
+            print('observation',observation.shape)
+            observation = observation.cuda().view(observation.shape[0]*observation.shape[1],3,64,64)
+            _,mu, logvar = model(observation)
 
-    print('====> Epoch: {} Average loss: {:.4f}'.format(
-        epoch, np.mean(train_loss) ))
+            record_logvar.append(logvar.view(observation.shape[0],32).data.cpu().numpy().astype('float32'))
+            record_mu.append(mu.view(observation.shape[0],32).data.cpu().numpy().astype('float32'))
+            record_actions.append(actions.view(observation.shape[0],3).numpy().astype('float32'))
+            print(batch_idx,len(record_logvar))
+            # print('actions_record',actions.shape)
+            # print('observation_record',observation.shape)
+
+    record_logvar=np.reshape(np.concatenate(record_logvar),[-1,1000,32])
+    record_mu=np.reshape(np.concatenate(record_mu),[-1,1000,32])
+    record_actions=np.reshape(np.concatenate(record_actions),[-1,1000,3])
+    print(record_logvar.shape,record_mu.shape,record_actions.shape)
+    np.savez_compressed(join('./datasets/carracing2_rnn', 'rnn_data.npz'),
+                        logvar=record_logvar,
+                        mu=record_mu,
+                        actions=record_actions)
 
 # check vae dir exists, if not, create it
 vae_dir = join(args.logdir, 'vae')
@@ -109,39 +115,4 @@ if not args.noreload and exists(reload_file):
 
 
 cur_best = None
-
-for epoch in range(trained+1, args.epochs + 1):
-    train(epoch)
-    test_loss = test()
-    # scheduler.step(test_loss)
-    # earlystopping.step(test_loss)
-
-    # checkpointing
-    best_filename = join(vae_dir, 'best.pkl')
-    filename = join(vae_dir, 'checkpoint_'+str(epoch)+'.pkl')
-    is_best = not cur_best or test_loss < cur_best
-    if is_best:
-        cur_best = test_loss
-
-    save_checkpoint({
-        'epoch': epoch,
-        'state_dict': model.state_dict(),
-        'precision': test_loss,
-        'optimizer': optimizer.state_dict(),
-        # 'scheduler': scheduler.state_dict(),
-        # 'earlystopping': earlystopping.state_dict()
-    }, is_best, filename, best_filename)
-
-
-
-    if not args.nosamples:
-        print('saving image')
-        with torch.no_grad():
-            sample = torch.randn(RED_SIZE, LSIZE).cuda()
-            sample = model.module.decoder(sample).cpu()
-            save_image(np.reshape(sample,[RED_SIZE, 3, RED_SIZE, RED_SIZE]),
-                       join(vae_dir, 'samples/sample_' + str(epoch) + '.png'))
-
-    # if earlystopping.stop:
-    #     print("End of Training because of early stopping at epoch {}".format(epoch))
-    #     break
+train(trained)

@@ -42,7 +42,7 @@ class _RolloutDataset(torch.utils.data.Dataset): # pylint: disable=too-few-publi
             count=0
             filename = filelist[i]
             raw_data = np.load(os.path.join(self._root, filename))['obs']
-            l = len(raw_data)
+            l = np.min([len(raw_data),M])
             true_data=[]
             # check_data=np.sum(raw_data,dim=-1)
             for j in range(l):

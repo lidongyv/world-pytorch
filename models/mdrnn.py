@@ -6,44 +6,36 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as f
 from torch.distributions.normal import Normal
+import numpy as np
 
-def gmm_loss(batch, mus, sigmas, logpi, reduce=True): # pylint: disable=too-many-arguments
-    """ Computes the gmm loss.
+def lognormal(y, mu, sigma):
+    logSqrtTwoPI = torch.log(torch.sqrt(2.0 *torch.ones(1)* np.pi)).cuda(y.device)
+    #print(y.shape,mu.shape)
+    return -0.5 * torch.pow((y - mu) / torch.exp(sigma),2) - sigma - logSqrtTwoPI
 
-    Compute minus the log probability of batch under the GMM model described
-    by mus, sigmas, pi. Precisely, with bs1, bs2, ... the sizes of the batch
-    dimensions (several batch dimension are useful when you have both a batch
-    axis and a time step axis), gs the number of mixtures and fs the number of
-    features.
 
-    :args batch: (bs1, bs2, *, fs) torch tensor
-    :args mus: (bs1, bs2, *, gs, fs) torch tensor
-    :args sigmas: (bs1, bs2, *, gs, fs) torch tensor
-    :args logpi: (bs1, bs2, *, gs) torch tensor
-    :args reduce: if not reduce, the mean in the following formula is ommited
+def get_lossfunc(pi, mu, sigma, y):
+    v = pi + lognormal(y, mu, sigma)
+    #print('v1', torch.max(v),torch.min(v))
+    v = torch.log(torch.max(torch.sum(torch.exp(v), dim=-1, keepdim=True),1e-4*torch.ones(1).cuda(pi.device)))
+    #print('v2', torch.min(torch.sum(torch.exp(v), dim=-1, keepdim=True)))
+    #print('v3', torch.mean(v))
+    return -torch.mean(v)
 
-    :returns:
-    loss(batch) = - mean_{i1=0..bs1, i2=0..bs2, ...} log(
-        sum_{k=1..gs} pi[i1, i2, ..., k] * N(
-            batch[i1, i2, ..., :] | mus[i1, i2, ..., k, :], sigmas[i1, i2, ..., k, :]))
 
-    NOTE: The loss is not reduced along the feature dimension (i.e. it should scale ~linearily
-    with fs).
-    """
-    batch = batch.unsqueeze(-2)
-    normal_dist = Normal(mus, sigmas)
-    g_log_probs = normal_dist.log_prob(batch)
-    g_log_probs = logpi + torch.sum(g_log_probs, dim=-1)
-    max_log_probs = torch.max(g_log_probs, dim=-1, keepdim=True)[0]
-    g_log_probs = g_log_probs - max_log_probs
+def gmm_loss(mus, sigmas, pi,output):
 
-    g_probs = torch.exp(g_log_probs)
-    probs = torch.sum(g_probs, dim=-1)
+    logpi=pi-torch.log(torch.sum(torch.exp(pi),dim=-1,keepdim=True))
+    print('logpi',torch.mean(logpi))
+    logpi=logpi.view(-1,logpi.shape[-1])
+    mus = mus.view(-1, mus.shape[-1])
+    sigmas = sigmas.view(-1,sigmas.shape[-1])
+    # reshape target data so that it is compatible with prediction shape
+    flat_target_data = output.contiguous().view(-1,1)
 
-    log_prob = max_log_probs.squeeze() + torch.log(probs)
-    if reduce:
-        return - torch.mean(log_prob)
-    return - log_prob
+    loss = get_lossfunc(logpi, mus, sigmas, flat_target_data)
+
+    return loss
 
 class _MDRNNBase(nn.Module):
     def __init__(self, latents, actions, hiddens, gaussians):
@@ -54,80 +46,52 @@ class _MDRNNBase(nn.Module):
         self.gaussians = gaussians
 
         self.gmm_linear = nn.Linear(
-            hiddens, (2 * latents + 1) * gaussians + 2)
+            hiddens, 3* latents * gaussians)
 
     def forward(self, *inputs):
         pass
 
 class MDRNN(_MDRNNBase):
-    """ MDRNN model for multi steps forward """
+
     def __init__(self, latents, actions, hiddens, gaussians):
         super().__init__(latents, actions, hiddens, gaussians)
         self.rnn = nn.LSTM(latents + actions, hiddens)
 
-    def forward(self, actions, latents): # pylint: disable=arguments-differ
-        """ MULTI STEPS forward.
-
-        :args actions: (SEQ_LEN, BSIZE, ASIZE) torch tensor
-        :args latents: (SEQ_LEN, BSIZE, LSIZE) torch tensor
-
-        :returns: mu_nlat, sig_nlat, pi_nlat, rs, ds, parameters of the GMM
-        prediction for the next latent, gaussian prediction of the reward and
-        logit prediction of terminality.
-            - mu_nlat: (SEQ_LEN, BSIZE, N_GAUSS, LSIZE) torch tensor
-            - sigma_nlat: (SEQ_LEN, BSIZE, N_GAUSS, LSIZE) torch tensor
-            - logpi_nlat: (SEQ_LEN, BSIZE, N_GAUSS) torch tensor
-            - rs: (SEQ_LEN, BSIZE) torch tensor
-            - ds: (SEQ_LEN, BSIZE) torch tensor
-        """
-        seq_len, bs = actions.size(0), actions.size(1)
-
-        ins = torch.cat([actions, latents], dim=-1)
-        outs, _ = self.rnn(ins)
+    def forward(self, latents,train=True):
+        if train:
+            self.rnn.flatten_parameters()
+        latents=latents.transpose(1,0)
+        seq_len=latents.shape[0]
+        bs=latents.shape[1]
+        outs, _ = self.rnn(latents)
+        # print(outs.shape)
+        # exit()
         gmm_outs = self.gmm_linear(outs)
 
         stride = self.gaussians * self.latents
 
         mus = gmm_outs[:, :, :stride]
-        mus = mus.view(seq_len, bs, self.gaussians, self.latents)
+        mus = mus.view(seq_len, bs, self.latents, self.gaussians)
 
         sigmas = gmm_outs[:, :, stride:2 * stride]
-        sigmas = sigmas.view(seq_len, bs, self.gaussians, self.latents)
-        sigmas = torch.exp(sigmas)
+        sigmas = sigmas.view(seq_len, bs, self.latents, self.gaussians)
+        # sigmas = torch.exp(sigmas)
+        pi = gmm_outs[:, :, 2 * stride: 3 * stride]
+        #print('pi',pi.shape,'mus',mus.shape,'sigmas',sigmas.shape)
+        pi = pi.view(seq_len, bs, self.latents, self.gaussians)
+        # logpi = f.log_softmax(pi, dim=-1)
 
-        pi = gmm_outs[:, :, 2 * stride: 2 * stride + self.gaussians]
-        pi = pi.view(seq_len, bs, self.gaussians)
-        logpi = f.log_softmax(pi, dim=-1)
 
-        rs = gmm_outs[:, :, -2]
-
-        ds = gmm_outs[:, :, -1]
-
-        return mus, sigmas, logpi, rs, ds
-
+        return mus, sigmas, pi
 class MDRNNCell(_MDRNNBase):
-    """ MDRNN model for one step forward """
+
     def __init__(self, latents, actions, hiddens, gaussians):
         super().__init__(latents, actions, hiddens, gaussians)
         self.rnn = nn.LSTMCell(latents + actions, hiddens)
 
-    def forward(self, action, latent, hidden): # pylint: disable=arguments-differ
-        """ ONE STEP forward.
-
-        :args actions: (BSIZE, ASIZE) torch tensor
-        :args latents: (BSIZE, LSIZE) torch tensor
-        :args hidden: (BSIZE, RSIZE) torch tensor
-
-        :returns: mu_nlat, sig_nlat, pi_nlat, r, d, next_hidden, parameters of
-        the GMM prediction for the next latent, gaussian prediction of the
-        reward, logit prediction of terminality and next hidden state.
-            - mu_nlat: (BSIZE, N_GAUSS, LSIZE) torch tensor
-            - sigma_nlat: (BSIZE, N_GAUSS, LSIZE) torch tensor
-            - logpi_nlat: (BSIZE, N_GAUSS) torch tensor
-            - rs: (BSIZE) torch tensor
-            - ds: (BSIZE) torch tensor
-        """
-        in_al = torch.cat([action, latent], dim=1)
+    def forward(self, action, latent, hidden):
+        print(action.shape,latent.shape)
+        in_al = torch.cat([latent,action], dim=1)
 
         next_hidden = self.rnn(in_al, hidden)
         out_rnn = next_hidden[0]
@@ -145,10 +109,6 @@ class MDRNNCell(_MDRNNBase):
 
         pi = out_full[:, 2 * stride:2 * stride + self.gaussians]
         pi = pi.view(-1, self.gaussians)
-        logpi = f.log_softmax(pi, dim=-1)
+        pi = f.softmax(pi, dim=-1)
 
-        r = out_full[:, -2]
-
-        d = out_full[:, -1]
-
-        return mus, sigmas, logpi, r, d, next_hidden
+        return mus, sigmas, pi, next_hidden

@@ -49,7 +49,10 @@ class _RolloutDataset(torch.utils.data.Dataset): # pylint: disable=too-few-publi
             #print(filename)
             raw_data = np.load(filename)['observations']
 
-            l = len(raw_data)
+            l = np.min([M,len(raw_data)])
+            if l<1000:
+                print(l)
+                continue
             #print(l)
             for j in range(l):
                 #print(np.max(raw_data[j]),np.min(raw_data[j]),np.mean(raw_data[j]))

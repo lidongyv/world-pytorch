@@ -22,11 +22,11 @@ from utils.misc import flatten_parameters
 
 # parsing
 parser = argparse.ArgumentParser()
-parser.add_argument('--logdir', type=str, help='Where everything is stored.')
-parser.add_argument('--n-samples', type=int, help='Number of samples used to obtain '
+parser.add_argument('--logdir',default='./log', type=str, help='Where everything is stored.')
+parser.add_argument('--n-samples', default=4,type=int, help='Number of samples used to obtain '
                     'return estimate.')
-parser.add_argument('--pop-size', type=int, help='Population size.')
-parser.add_argument('--target-return', type=float, help='Stops once the return '
+parser.add_argument('--pop-size', default=4,type=int, help='Population size.')
+parser.add_argument('--target-return',default=950, type=float, help='Stops once the return '
                     'gets above target_return')
 parser.add_argument('--display', action='store_true', help="Use progress bars if "
                     "specified.")
@@ -84,17 +84,20 @@ def slave_routine(p_queue, r_queue, e_queue, p_index):
     # init routine
     gpu = p_index % torch.cuda.device_count()
     device = torch.device('cuda:{}'.format(gpu) if torch.cuda.is_available() else 'cpu')
-
+    print('queue',p_index)
     # redirect streams
     sys.stdout = open(join(tmp_dir, str(getpid()) + '.out'), 'a')
     sys.stderr = open(join(tmp_dir, str(getpid()) + '.err'), 'a')
 
     with torch.no_grad():
+        print('start env')
         r_gen = RolloutGenerator(args.logdir, device, time_limit)
-
+        count_r=0
         while e_queue.empty():
+            print('generation:',p_index,'times:',count_r)
             if p_queue.empty():
                 sleep(.1)
+                print('p sleep')
             else:
                 s_id, params = p_queue.get()
                 r_queue.put((s_id, r_gen.rollout(params)))
@@ -109,6 +112,7 @@ e_queue = Queue()
 
 for p_index in range(num_workers):
     Process(target=slave_routine, args=(p_queue, r_queue, e_queue, p_index)).start()
+    print('start',p_index)
 
 
 ################################################################################
@@ -146,7 +150,7 @@ def evaluate(solutions, results, rollouts=100):
 controller = Controller(LSIZE, RSIZE, ASIZE)  # dummy instance
 
 # define current best and load parameters
-cur_best = None
+cur_best = 0
 ctrl_file = join(ctrl_dir, 'best.tar')
 print("Attempting to load previous best...")
 if exists(ctrl_file):
@@ -154,6 +158,8 @@ if exists(ctrl_file):
     cur_best = - state['reward']
     controller.load_state_dict(state['state_dict'])
     print("Previous best was {}...".format(-cur_best))
+else:
+    print('init controller')
 
 parameters = controller.parameters()
 es = cma.CMAEvolutionStrategy(flatten_parameters(parameters), 0.1,
@@ -161,24 +167,28 @@ es = cma.CMAEvolutionStrategy(flatten_parameters(parameters), 0.1,
 
 epoch = 0
 log_step = 3
+print('start CMA-ES')
+count_g=0
 while not es.stop():
     if cur_best is not None and - cur_best > args.target_return:
         print("Already better than target, breaking...")
         break
-
+    print('training_es',count_g)
     r_list = [0] * pop_size  # result list
     solutions = es.ask()
 
     # push parameters to queue
     for s_id, s in enumerate(solutions):
-        for _ in range(n_samples):
+        for pq in range(n_samples):
             p_queue.put((s_id, s))
+            print('push queue',s_id,'sample',pq)
 
     # retrieve results
     if args.display:
         pbar = tqdm(total=pop_size * n_samples)
     for _ in range(pop_size * n_samples):
         while r_queue.empty():
+            print('sleep r')
             sleep(.1)
         r_s_id, r = r_queue.get()
         r_list[r_s_id] += r / n_samples
@@ -186,7 +196,7 @@ while not es.stop():
             pbar.update(1)
     if args.display:
         pbar.close()
-
+    count_g+=1
     es.tell(solutions, r_list)
     es.disp()
 
@@ -206,7 +216,11 @@ while not es.stop():
         if - best > args.target_return:
             print("Terminating controller training with value {}...".format(best))
             break
-
+    torch.save(
+        {'epoch': epoch,
+         'reward': -cur_best,
+         'state_dict': controller.state_dict()},
+        join(ctrl_dir, str(epoch)+'.tar'))
 
     epoch += 1
 

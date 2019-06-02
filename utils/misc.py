@@ -121,14 +121,15 @@ class RolloutGenerator(object):
                   "with test loss {}".format(
                       m, s['epoch'], s['precision']))
 
-        self.vae = VAE(3, LSIZE).to(device)
+        self.vae = torch.nn.DataParallel(VAE(3, LSIZE)).cuda()
+
         self.vae.load_state_dict(vae_state['state_dict'])
 
-        self.mdrnn = MDRNNCell(LSIZE, ASIZE, RSIZE, 5).to(device)
+        self.mdrnn = torch.nn.DataParallel(MDRNNCell(LSIZE, ASIZE, RSIZE, 5)).cuda()
         self.mdrnn.load_state_dict(
             {k.strip('_l0'): v for k, v in rnn_state['state_dict'].items()})
-
-        self.controller = Controller(LSIZE, RSIZE, ASIZE).to(device)
+        # self.mdrnn.load_state_dict(rnn_state['state_dict'])
+        self.controller = torch.nn.DataParallel(Controller(LSIZE, RSIZE, ASIZE)).cuda()
 
         # load controller if it was previously saved
         if exists(ctrl_file):
@@ -156,12 +157,16 @@ class RolloutGenerator(object):
             - action: 1D np array
             - next_hidden (1 x 256) torch tensor
         """
+
+        #hidden=hidden.cuda()
+        # obs=obs.cuda(next(self.vae.parameters()).device)
+        print(obs.device, next(self.vae.parameters()).device)
         _, latent_mu, _ = self.vae(obs)
         action = self.controller(latent_mu, hidden[0])
-        _, _, _, _, _, next_hidden = self.mdrnn(action, latent_mu, hidden)
+        _, _, _, next_hidden = self.mdrnn(action, latent_mu, hidden)
         return action.squeeze().cpu().numpy(), next_hidden
 
-    def rollout(self, params, render=False):
+    def rollout(self, params, render=True):
         """ Execute a rollout and returns minus cumulative reward.
 
         Load :params: into the controller and execute a single rollout. This
@@ -181,19 +186,26 @@ class RolloutGenerator(object):
         self.env.render()
 
         hidden = [
-            torch.zeros(1, RSIZE).to(self.device)
+            torch.zeros(1, RSIZE).cuda(next(self.mdrnn.parameters()).device)
             for _ in range(2)]
 
         cumulative = 0
         i = 0
+        check_action=[]
         while True:
-            obs = transform(obs).unsqueeze(0).to(self.device)
+            obs = transform(obs).unsqueeze(0).cuda(next(self.vae.parameters()).device)
             action, hidden = self.get_action_and_transition(obs, hidden)
             obs, reward, done, _ = self.env.step(action)
+            #individual predict the three factors of action
 
+            # speed=np.sqrt(np.square(self.env.hull.linearVelocity[0]) + np.square(self.env.hull.linearVelocity[1]))
+            # check_action.append(speed)
+            # if i>50 and np.mean(check_action[-10:])<0.01:
+            #     done=True
+            print(i)
             if render:
                 self.env.render()
-
+            print(action)
             cumulative += reward
             if done or i > self.time_limit:
                 return - cumulative
