@@ -2,22 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="9c091953-21e9-4817-8c0c-2c59c0d2e706" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/data/loaders_rnn.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/driving_in_dream.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_rnn_vae.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/testrnn.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/world-models.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/world-models.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/loaders.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/loaders.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/loaders_pt.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/loaders_pt.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/loaders_series.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/loaders_series.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/mdrnn.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/mdrnn.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/series.py" beforeDir="false" afterPath="$PROJECT_DIR$/series.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/traincontroller.py" beforeDir="false" afterPath="$PROJECT_DIR$/traincontroller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trainmdrnn.py" beforeDir="false" afterPath="$PROJECT_DIR$/trainmdrnn.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/misc.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/misc.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/carracing.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/carracing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/generation_script.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/generation_script.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -86,8 +75,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/models/mdrnn.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="130">
-              <caret line="17" column="36" lean-forward="true" selection-start-line="17" selection-start-column="36" selection-end-line="17" selection-end-column="36" />
+            <state relative-caret-position="338">
+              <caret line="17" column="36" selection-start-line="17" selection-start-column="36" selection-end-line="17" selection-end-column="36" />
               <folding>
                 <element signature="e#86#98#0" expanded="true" />
               </folding>
@@ -110,8 +99,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/trainmdrnn.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="243">
-              <caret line="164" column="23" selection-start-line="164" selection-start-column="23" selection-end-line="164" selection-end-column="23" />
+            <state relative-caret-position="379">
+              <caret line="162" column="12" lean-forward="true" selection-start-line="162" selection-start-column="12" selection-end-line="162" selection-end-column="12" />
               <folding>
                 <element signature="e#33#48#0" expanded="true" />
               </folding>
@@ -442,11 +431,13 @@
       <workItem from="1559186670832" duration="19744000" />
       <workItem from="1559265923109" duration="12937000" />
       <workItem from="1559458532244" duration="3602000" />
+      <workItem from="1559465495115" duration="734000" />
+      <workItem from="1560480015256" duration="707000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="119571000" />
+    <option name="totallyTimeSpent" value="121012000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -461,12 +452,12 @@
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.25799572" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.26332623" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.4978678" visible="true" weight="0.32212582" />
+      <window_info anchor="bottom" id="Run" order="2" sideWeight="0.4978678" weight="0.32212582" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -474,17 +465,17 @@
       <window_info anchor="bottom" id="Docker" order="7" show_stripe_button="false" />
       <window_info anchor="bottom" id="Version Control" order="8" />
       <window_info anchor="bottom" id="Database Changes" order="9" />
-      <window_info anchor="bottom" id="Event Log" order="10" sideWeight="0.5021322" side_tool="true" weight="0.32962137" />
+      <window_info anchor="bottom" id="Event Log" order="10" sideWeight="0.5021322" side_tool="true" weight="0.3286334" />
       <window_info anchor="bottom" id="Terminal" order="11" sideWeight="0.49946696" weight="0.32962137" />
       <window_info anchor="bottom" id="Python Console" order="12" sideWeight="0.49946696" weight="0.32962137" />
-      <window_info anchor="bottom" id="File Transfer" order="13" sideWeight="0.49840087" weight="0.3286334" />
+      <window_info anchor="bottom" id="File Transfer" order="13" sideWeight="0.4978678" visible="true" weight="0.3286334" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
       <window_info anchor="right" id="Remote Host" order="3" weight="0.32995737" />
       <window_info anchor="right" id="SciView" order="4" weight="0.32995737" />
       <window_info anchor="right" id="Database" order="5" weight="0.32995737" />
-      <window_info anchor="right" x="0" y="0" width="434" height="856" id="Documentation" order="6" side_tool="true" weight="0.32995737" />
+      <window_info anchor="right" x="0" y="0" width="434" height="856" id="Documentation" order="6" side_tool="true" visible="true" weight="0.32995737" />
     </layout>
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -634,6 +625,16 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/models/mdrnn.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="338">
+          <caret line="17" column="36" selection-start-line="17" selection-start-column="36" selection-end-line="17" selection-end-column="36" />
+          <folding>
+            <element signature="e#86#98#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/driving_in_dream.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="2600">
@@ -641,6 +642,13 @@
           <folding>
             <element signature="e#21#36#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/data/loaders_rnn.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="52">
+          <caret line="10" column="3" selection-start-line="10" selection-start-column="3" selection-end-line="10" selection-end-column="3" />
         </state>
       </provider>
     </entry>
@@ -664,27 +672,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/models/mdrnn.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="130">
-          <caret line="17" column="36" lean-forward="true" selection-start-line="17" selection-start-column="36" selection-end-line="17" selection-end-column="36" />
-          <folding>
-            <element signature="e#86#98#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/data/loaders_rnn.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="52">
-          <caret line="10" column="3" selection-start-line="10" selection-start-column="3" selection-end-line="10" selection-end-column="3" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/trainmdrnn.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="243">
-          <caret line="164" column="23" selection-start-line="164" selection-start-column="23" selection-end-line="164" selection-end-column="23" />
+        <state relative-caret-position="379">
+          <caret line="162" column="12" lean-forward="true" selection-start-line="162" selection-start-column="12" selection-end-line="162" selection-end-column="12" />
           <folding>
             <element signature="e#33#48#0" expanded="true" />
           </folding>

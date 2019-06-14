@@ -17,7 +17,7 @@ parser.add_argument('--policy', type=str, choices=['brown', 'white'],
 args = parser.parse_args()
 
 def _threaded_generation(i):
-    tdir = join('datasets/carracing2/thread_{}'.format(i))
+    tdir = join('datasets/carracing/thread_{}'.format(i))
     makedirs(tdir, exist_ok=True)
     # cmd = ['xvfb-run', '-s', '"-screen 0 1400x900x24"']
     # cmd += ['--server-num={}'.format(i + 1)]
